@@ -106,10 +106,14 @@ int main()
           if (q) {
               *q = '\0'; // ตัด string ตรงจุดที่เจอ quote ปิด
               /* duplicate string และทำความสะอาด (ลบ , ออก → แทนด้วย space) */
-              char *clean = strdup(p);
-              for (char *c = clean; *c; c++) {
-                  if (*c == ',') *c = ' ';
+              char *clean = malloc(strlen(p) + 1);
+              char *dst = clean;
+              for (char *c = p; *c; c++) {
+                  if (*c != ',') {
+                      *dst++ = *c;
+                  }
               }
+              *dst = '\0';
               printf("display_name: %s\n", clean);
               lo[index].place = clean; // เก็บชื่อสถานที่ลง struct
           }

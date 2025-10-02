@@ -1,55 +1,79 @@
-/*
-Assignment 2 : Done
-ให้นักศึกษาใช้ text file ตัวอย่าง [boyer-moore.txt] เป็นชุดข้อมูลสำหรับการค้นหา 
-แล้วให้นักศึกษาสร้างฟังก์ชั่น Boyer-Moore(text,data) ซึ่งเป็นฟังก์ชั่นที่ใช้ในการค้นหา text ใน data 
-และให้นักศึกษาเขียนโปรแกรมรับ keyword ที่ใช้ในการค้นหา แล้วเรียกฟังก์ชั่น Boyer-Moore ที่สร้างขึ้น แล้วแสดงผลตำแหน่งที่พบ 
-keyword ทัั้งหมดใน data 
-*/
-
 #include <stdio.h>
 #include <string.h>
+#define maxchar 2048
 
-// ฟังก์ชัน BoyerMoore ใช้ค้นหาคำ (text) ในไฟล์ (data)
-void BoyerMoore(char *text, char *data)
-{
-  FILE *in;                // ตัวชี้ไฟล์ที่จะเปิดอ่าน
-  char ReadLine[255];      // buffer เก็บข้อความทีละบรรทัด (สูงสุด 254 ตัวอักษร + null terminator)
-  int lineN = 0;           // นับเลขบรรทัด (เริ่มจาก 0)
-  int count = 0;
-
-  in = fopen(data, "r");   // เปิดไฟล์ในโหมดอ่าน
-
-  // อ่านไฟล์ทีละบรรทัดจนกว่าจะหมด
-  while (fgets(ReadLine, sizeof(ReadLine), in) != NULL)
-  {
-    lineN++;               // เพิ่มตัวนับบรรทัด
-    char *pos = ReadLine;  // ตัวชี้ตำแหน่งที่ใช้ค้นหาในบรรทัดปัจจุบัน
-    int index;             // เก็บตำแหน่งที่เจอข้อความ (เริ่มนับจาก 1)
-
-    // ค้นหาข้อความ text ในบรรทัดเดียวกัน
-    while ((pos = strstr(pos, text)) != NULL)
-    {
-      index = (pos - ReadLine) + 1; // คำนวณตำแหน่งที่เจอ (pos - ต้นบรรทัด + 1)
-      printf("line : %d, pos : %d\n", lineN, index);
-      count++;
-      pos += strlen(text); // ขยับ pointer ไปหลังข้อความที่เจอ เพื่อหาคำต่อไป
-    }
-  }
-
-  if(!count) printf("Not Found %s in %s file\n", text, data);
-
-  fclose(in);              // ปิดไฟล์หลังจากอ่านเสร็จ
+// สร้างตาราง bad-character heuristic
+void badCharHeuristic(const char* str, int size, int badchar[maxchar]) {
+    for (int i = 0; i < maxchar; i++)
+        badchar[i] = -1;
+    for (int i = 0; i < size; i++)
+        badchar[(unsigned char)str[i]] = i;
 }
 
-int main()
-{
-  char text[100], data[100];  // text = คำที่จะค้นหา, data = ชื่อไฟล์ที่จะค้นหา
-  
-  printf("KeyWord : ");
-  scanf("%s", text);          // รับคำค้นหาจากผู้ใช้
-  printf("File(path) : ");
-  scanf("%s", data);          // รับชื่อไฟล์จากผู้ใช้
+int bm_scan_line(const char* line, const char* pattern, const int badCharTable[maxchar], int lineN) {
+    int n = strlen(line);
+    int m = strlen(pattern);
+    if (m == 0 || n == 0 || n < m) return 0;
 
-  BoyerMoore(text, data);     // เรียกใช้ฟังก์ชันค้นหา
-  printf("Done\n");           // แสดงข้อความว่าเสร็จสิ้น
+    int count = 0;
+    int shift = 0;
+
+    while (shift <= n - m) {
+        int j = m - 1;
+
+        while (j >= 0 && pattern[j] == line[shift + j]) {
+            j--;
+        }
+
+        if (j < 0) {
+            int col = shift + 1; // index เริ่มจาก 1
+            printf("line : %d, at col : %d\n", lineN, col);
+            count++;
+
+            if (shift + m < n) {
+                shift += m - badCharTable[(unsigned char)line[shift + m]];
+            } else {
+                shift += 1;
+            }
+        } else {
+            int badIndex = badCharTable[(unsigned char)line[shift + j]];
+            int move = j - badIndex;
+            shift += (move > 1) ? move : 1;
+        }
+    }
+    return count;
+}
+
+// ฟังก์ชัน BoyerMoore ใช้ค้นหา text ในไฟล์ data
+void BoyerMoore(char *text, char *data) {
+    int badCharTable[maxchar];
+    FILE *in;
+    char ReadLine[maxchar];
+    int lineN = 0;
+    int count = 0;
+
+    badCharHeuristic(text, strlen(text), badCharTable);
+    in = fopen(data, "r");
+    if (!in) {
+        fprintf(stderr, "Cannot open file: %s\n", data);
+        return;
+    }
+
+    while (fgets(ReadLine, sizeof(ReadLine), in) != NULL) {
+        lineN++;
+        count += bm_scan_line(ReadLine, text, badCharTable, lineN);
+    }
+
+    if (!count) printf("Not Found %s in %s file\n", text, data);
+
+    fclose(in);
+}
+
+int main() {
+    char text[100], data[100];
+    scanf("%s", text);
+    scanf("%s", data);
+    BoyerMoore(text, data);
+    printf("Done\n");
+    return 0;
 }

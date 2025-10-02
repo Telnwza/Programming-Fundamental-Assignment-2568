@@ -3,27 +3,24 @@
 #include <string.h>
 #include <curl/curl.h>
 
-/* ====== โครงสร้างเก็บข้อมูลที่ curl โหลดมา ====== */
 struct Memory
 {
-  char *data;   // buffer สำหรับเก็บข้อมูล JSON ที่โหลดจาก URL
-  size_t size;  // ขนาดข้อมูลที่โหลดมา
+  char *data;
+  size_t size;
 };
 
-/* callback สำหรับให้ curl เขียนข้อมูลลง buffer */
 static size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp)
 {
-  size_t total = size * nmemb;                      // คำนวณขนาดข้อมูลจริง
-  struct Memory *mem = (struct Memory *)userp;      // cast เป็น struct Memory
+  size_t total = size * nmemb;
+  struct Memory *mem = (struct Memory *)userp;
 
-  // realloc buffer ให้ใหญ่พอเก็บข้อมูลใหม่
   char *ptr = realloc(mem->data, mem->size + total + 1);
-  if (!ptr) return 0;                               // ถ้า realloc fail → return 0
+  if (!ptr) return 0;
 
   mem->data = ptr;
-  memcpy(&(mem->data[mem->size]), contents, total); // คัดลอกข้อมูลใหม่ต่อท้าย
+  memcpy(&(mem->data[mem->size]), contents, total);
   mem->size += total;
-  mem->data[mem->size] = '\0';                      // ปิดท้ายด้วย '\0' ให้เป็น string
+  mem->data[mem->size] = '\0';
   return total;
 }
 
@@ -125,7 +122,7 @@ int main()
     //printf("%d: %.6f, %.6f, %s\n", lo[i].no, lo[i].lat, lo[i].lon, lo[i].place);
     fprintf(out, "%d,%.6f,%.6f,%s,\n", lo[i].no, lo[i].lat, lo[i].lon, lo[i].place);
   }
-  
+
   fclose(in);
   fclose(out);
   free(chunk.data);

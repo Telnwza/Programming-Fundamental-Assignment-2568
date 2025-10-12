@@ -1,79 +1,114 @@
 #include <stdio.h>
 #include <string.h>
-#define maxchar 2048
 
-// สร้างตาราง bad-character heuristic
-void badCharHeuristic(const char* str, int size, int badchar[maxchar]) {
-    for (int i = 0; i < maxchar; i++)
-        badchar[i] = -1;
-    for (int i = 0; i < size; i++)
-        badchar[(unsigned char)str[i]] = i;
+// กำหนดจำนวนตัวอักษรสูงสุดใน ASCII table
+#define MAX_CHARS 256
+
+void buildBadCharTable(const char* pattern, int patternLength, int badCharTable[MAX_CHARS]) {
+    // 1. เริ่มต้นให้ทุกช่องในตารางมีค่าเป็น -1 (หมายถึงไม่พบตัวอักษรนั้นใน pattern)
+    for (int i = 0; i < MAX_CHARS; i++) {
+        badCharTable[i] = -1;
+    }
+
+    // 2. วนลูปใน pattern เพื่อเก็บตำแหน่งล่าสุดของแต่ละตัวอักษร
+    //    ถ้าเจอตัวอักษรซ้ำ จะใช้ตำแหน่งที่มาทีหลังสุด
+    for (int i = 0; i < patternLength; i++) {
+        badCharTable[(unsigned char)pattern[i]] = i;
+    }
 }
 
-int bm_scan_line(const char* line, const char* pattern, const int badCharTable[maxchar], int lineN) {
-    int n = strlen(line);
-    int m = strlen(pattern);
-    if (m == 0 || n == 0 || n < m) return 0;
+int searchLineWithBoyerMoore(const char* textLine, const char* pattern, const int badCharTable[MAX_CHARS], int lineNumber) {
+    int textLength = strlen(textLine);
+    int patternLength = strlen(pattern);
 
-    int count = 0;
-    int shift = 0;
+    // ถ้า pattern หรือ text ว่างเปล่า หรือ text สั้นกว่า pattern ก็ไม่ต้องค้นหา
+    if (patternLength == 0 || textLength == 0 || textLength < patternLength) {
+        return 0;
+    }
 
-    while (shift <= n - m) {
-        int j = m - 1;
+    int occurrencesInLine = 0; 
+    int shift = 0; // ตำแหน่งเริ่มต้นของการเปรียบเทียบใน textLine
 
-        while (j >= 0 && pattern[j] == line[shift + j]) {
-            j--;
+    // วนลูปเพื่อเลื่อน pattern ไปเรื่อยๆ จนกว่าจะสุดข้อความใน textLine
+    while (shift <= (textLength - patternLength)) {
+        int patternIndex = patternLength - 1; // เริ่มเปรียบเทียบจากตัวอักษรสุดท้ายของ pattern
+
+        // เปรียบเทียบ pattern กับส่วนของ textLine แบบย้อนหลังจากขวาไปซ้าย
+        while (patternIndex >= 0 && pattern[patternIndex] == textLine[shift + patternIndex]) {
+            patternIndex--;
         }
 
-        if (j < 0) {
-            int col = shift + 1; // index เริ่มจาก 1
-            printf("line : %d, at col : %d\n", lineN, col);
-            count++;
+        // ถ้า patternIndex กลายเป็น -1 หมายความว่าเปรียบเทียบครบทุกตัวและตรงกันทั้งหมด (เจอ pattern)
+        if (patternIndex < 0) {
+            int columnNumber = shift + 1; // ตำแหน่งที่เจอ (เริ่มนับจาก 1)
+            printf("Found at Line: %d, Column: %d\n", lineNumber, columnNumber);
+            occurrencesInLine++;
 
-            if (shift + m < n) {
-                shift += m - badCharTable[(unsigned char)line[shift + m]];
+            // คำนวณการเลื่อน (shift) ครั้งต่อไปหลังจากเจอ pattern
+            // โดยใช้ "Good Suffix Heuristic" แบบง่าย
+            if (shift + patternLength < textLength) {
+                // เลื่อน pattern ไปตามค่าใน badCharTable ของตัวอักษรใน textLine ที่อยู่ถัดจากตำแหน่งที่เจอ
+                shift += patternLength - badCharTable[(unsigned char)textLine[shift + patternLength]];
             } else {
+                // ถ้าเจอตอนท้ายสุดของ textLine แล้ว ก็เลื่อนไป 1 ช่องเพื่อจบการทำงาน
                 shift += 1;
             }
         } else {
-            int badIndex = badCharTable[(unsigned char)line[shift + j]];
-            int move = j - badIndex;
-            shift += (move > 1) ? move : 1;
+            // ถ้าตัวอักษรไม่ตรงกัน (mismatch)
+            // คำนวณการเลื่อนโดยใช้ "Bad Character Heuristic"
+            char mismatchedChar = textLine[shift + patternIndex];
+            int badCharIndex = badCharTable[(unsigned char)mismatchedChar];
+            int shiftAmount = patternIndex - badCharIndex;
+
+            // เลื่อน pattern ไปข้างหน้าอย่างน้อย 1 ตำแหน่งเสมอ
+            shift += (shiftAmount > 1) ? shiftAmount : 1;
         }
     }
-    return count;
+    return occurrencesInLine;
 }
+void searchFileWithBoyerMoore(char *pattern, char *filePath) {
+    int badCharTable[MAX_CHARS];
+    char lineBuffer[2048]; // Buffer สำหรับเก็บข้อมูลทีละบรรทัด
+    int lineNumber = 0;
+    int totalOccurrences = 0;
 
-// ฟังก์ชัน BoyerMoore ใช้ค้นหา text ในไฟล์ data
-void BoyerMoore(char *text, char *data) {
-    int badCharTable[maxchar];
-    FILE *in;
-    char ReadLine[maxchar];
-    int lineN = 0;
-    int count = 0;
+    // 1. สร้าง Bad Character Table จาก pattern
+    buildBadCharTable(pattern, strlen(pattern), badCharTable);
 
-    badCharHeuristic(text, strlen(text), badCharTable);
-    in = fopen(data, "r");
-    if (!in) {
-        fprintf(stderr, "Cannot open file: %s\n", data);
+    // 2. เปิดไฟล์
+    FILE *file = fopen(filePath, "r");
+    if (!file) {
+        fprintf(stderr, "Error: Cannot open file '%s'\n", filePath);
         return;
     }
 
-    while (fgets(ReadLine, sizeof(ReadLine), in) != NULL) {
-        lineN++;
-        count += bm_scan_line(ReadLine, text, badCharTable, lineN);
+    // 3. อ่านไฟล์ทีละบรรทัดแล้วทำการค้นหา
+    while (fgets(lineBuffer, sizeof(lineBuffer), file) != NULL) {
+        lineNumber++;
+        totalOccurrences += searchLineWithBoyerMoore(lineBuffer, pattern, badCharTable, lineNumber);
     }
 
-    if (!count) printf("Not Found %s in %s file\n", text, data);
+    // 4. แสดงผลหากไม่พบ pattern เลย
+    if (totalOccurrences == 0) {
+        printf("Pattern '%s' not found in file '%s'.\n", pattern, filePath);
+    }
 
-    fclose(in);
+    fclose(file);
 }
 
 int main() {
-    char text[100], data[100];
-    scanf("%s", text);
-    scanf("%s", data);
-    BoyerMoore(text, data);
-    printf("Done\n");
+    char patternToFind[100];
+    char fileName[100];
+
+    printf("Enter the pattern to search for: ");
+    scanf("%s", patternToFind);
+
+    printf("Enter the file name to search in: ");
+    scanf("%s", fileName);
+    
+    printf("\n--- Searching... ---\n");
+    searchFileWithBoyerMoore(patternToFind, fileName);
+    printf("--- Search complete. ---\n");
+
     return 0;
 }

@@ -1,3 +1,10 @@
+/*
+ให้นักศึกษาใช้ CSV (comma-separated values) file ตัวอย่าง [latlonfile.csv] แล้วเขียนโปรแกรมอ่านไฟล์ดังกล่าว 
+โดยนำค่า lat,lon แต่ละค่าไป query หาค่าสถานที่โดยใช้ URL ที่กำหนด หลังจากนั้นสร้าง csv file ใหม่ โดยใช้ชื่อไฟล์เป็นรหัสนักศึกษา 
+โดยเพิ่มข้อมูลสถานที่ที่ได้ต่อท้ายแต่ละบรรทัด โดยไฟล์ผลลัพธ์มีข้อมูล 4 ค่าคือ no,lat,lon,place 
+สำหรับ URL สำหรับค้นหาสถานที่จากพิกัด lat,lon คือ
+https://nominatim.openstreetmap.org/reverse?format=json&lat=13.690092&lon=100.750240
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

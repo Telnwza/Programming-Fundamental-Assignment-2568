@@ -1,3 +1,10 @@
+/*
+Assignment 2 :
+ให้นักศึกษาใช้ text file ตัวอย่าง [boyer-moore.txt] เป็นชุดข้อมูลสำหรับการค้นหา แล้วให้นักศึกษาสร้างฟังก์ชั่น Boyer-Moore(text,data) 
+ซึ่งเป็นฟังก์ชั่นที่ใช้ในการค้นหา text ใน data และให้นักศึกษาเขียนโปรแกรมรับ keyword ที่ใช้ในการค้นหา แล้วเรียกฟังก์ชั่น Boyer-Moore ที่สร้างขึ้น 
+แล้วแสดงผลตำแหน่งที่พบ keyword ทัั้งหมดใน data 
+*/
+
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
